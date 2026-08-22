@@ -58,6 +58,6 @@ The application:
 
 Example:
 
-text
+```text
 53/tcp   domain
 80/tcp   http
