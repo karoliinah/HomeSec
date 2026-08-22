@@ -1,5 +1,7 @@
 import nmap
 
+from app.schemas.device import Device
+
 
 class NetworkScanner:
     """
@@ -17,18 +19,21 @@ class NetworkScanner:
         devices = []
 
         for host in scanner.all_hosts():
-            device = {
-                "hostname": scanner[host].hostname() or "Unknown",
-                "ip": host,
-                "status": scanner[host].state(),
-            }
+            device = Device(
+                hostname=scanner[host].hostname() or "Unknown",
+                ip=host,
+                status=scanner[host].state(),
+                mac="Unknown",
+                vendor="Unknown",
+            )
 
             # Get MAC address and vendor if available
             addresses = scanner[host].get("addresses", {})
             vendor = scanner[host].get("vendor", {})
 
-            device["mac"] = addresses.get("mac", "Unknown")
-            device["vendor"] = (
+            device.mac = addresses.get("mac", "Unknown")
+
+            device.vendor = (
                 list(vendor.values())[0]
                 if vendor
                 else "Unknown"
