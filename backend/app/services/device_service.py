@@ -21,19 +21,18 @@ class DeviceService:
         self.alert_repository = AlertRepository()
 
     def scan_and_save(self, db: Session):
-        # Discover devices on the network
+        # Discover devices
         devices = self.scanner.scan_network()
 
         assessed_devices = []
 
         for device in devices:
-            # Scan common TCP ports for each discovered device
+            # Scan open ports
             open_ports = self.port_scanner.scan_device(device.ip)
 
-            # Attach port information to the device
             device.open_ports = open_ports
 
-            # Assess security risk
+            # Calculate risk
             assessed_device = self.risk_engine.assess_device(device)
 
             assessed_devices.append(assessed_device)
@@ -42,6 +41,8 @@ class DeviceService:
         new_devices = []
 
         for device in assessed_devices:
+
+            # Check whether device already exists
             existing_device = self.repository.get_by_ip(
                 db,
                 device.ip,
@@ -53,6 +54,7 @@ class DeviceService:
                     existing_device,
                     device,
                 )
+
             else:
                 saved_device = self.repository.create(
                     db,
@@ -70,8 +72,9 @@ class DeviceService:
                     device_hostname=device.hostname,
                 )
 
-            # Save discovered open ports
+            # Process ports
             for port_info in device.open_ports:
+
                 existing_port = (
                     self.port_repository.get_by_device_and_port(
                         db=db,
@@ -82,12 +85,16 @@ class DeviceService:
                 )
 
                 if existing_port:
+
                     self.port_repository.update(
                         db=db,
                         db_port=existing_port,
                         service=port_info["service"],
                     )
+
                 else:
+
+                    # New port detected
                     self.port_repository.create(
                         db=db,
                         device_id=saved_device.id,
@@ -96,8 +103,22 @@ class DeviceService:
                         service=port_info["service"],
                     )
 
+                    self.alert_repository.create(
+                        db=db,
+                        alert_type="new_port",
+                        message=(
+                            f"New open port detected: "
+                            f"{port_info['port']} "
+                            f"({port_info['service']})"
+                        ),
+                        severity="Medium",
+                        device_ip=device.ip,
+                        device_hostname=device.hostname,
+                    )
+
             saved_devices.append(saved_device)
 
+        # Calculate scan statistics
         high_risk_count = sum(
             1
             for device in saved_devices
@@ -116,6 +137,7 @@ class DeviceService:
             if device.risk_level == "Low"
         )
 
+        # Save scan history
         self.scan_repository.create(
             db=db,
             device_count=len(saved_devices),
