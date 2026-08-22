@@ -8,7 +8,18 @@ from app.database.models import DeviceModel
 class DeviceRepository:
 
     def get_all(self, db: Session):
-        return db.query(DeviceModel).order_by(DeviceModel.id).all()
+        return (
+            db.query(DeviceModel)
+            .order_by(DeviceModel.id)
+            .all()
+        )
+
+    def get_by_id(self, db: Session, device_id: int):
+        return (
+            db.query(DeviceModel)
+            .filter(DeviceModel.id == device_id)
+            .first()
+        )
 
     def get_by_ip(self, db: Session, ip: str):
         return (

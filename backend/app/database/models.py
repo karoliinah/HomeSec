@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.database.database import Base
@@ -55,6 +55,39 @@ class PortModel(Base):
     )
 
 
+class AIAnalysisModel(Base):
+    __tablename__ = "ai_analyses"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    device_id = Column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+
+    analysis = Column(
+        Text,
+        nullable=False,
+    )
+
+    model = Column(
+        String,
+        default="gemini-3.6-flash",
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class ScanModel(Base):
     __tablename__ = "scans"
 
@@ -65,7 +98,10 @@ class ScanModel(Base):
         server_default=func.now(),
     )
 
-    completed_at = Column(DateTime(timezone=True))
+    completed_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
     device_count = Column(Integer, default=0)
 
@@ -73,7 +109,10 @@ class ScanModel(Base):
     medium_risk_count = Column(Integer, default=0)
     low_risk_count = Column(Integer, default=0)
 
-    status = Column(String, default="completed")
+    status = Column(
+        String,
+        default="completed",
+    )
 
 
 class AlertModel(Base):
@@ -81,15 +120,35 @@ class AlertModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    alert_type = Column(String, nullable=False)
-    message = Column(String, nullable=False)
+    alert_type = Column(
+        String,
+        nullable=False,
+    )
 
-    severity = Column(String, default="Medium")
+    message = Column(
+        String,
+        nullable=False,
+    )
 
-    device_ip = Column(String, nullable=True)
-    device_hostname = Column(String, nullable=True)
+    severity = Column(
+        String,
+        default="Medium",
+    )
 
-    acknowledged = Column(Boolean, default=False)
+    device_ip = Column(
+        String,
+        nullable=True,
+    )
+
+    device_hostname = Column(
+        String,
+        nullable=True,
+    )
+
+    acknowledged = Column(
+        Boolean,
+        default=False,
+    )
 
     created_at = Column(
         DateTime(timezone=True),
