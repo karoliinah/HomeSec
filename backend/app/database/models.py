@@ -19,7 +19,35 @@ class DeviceModel(Base):
 
     trusted = Column(Boolean, default=False)
 
-    first_seen = Column(DateTime(timezone=True), server_default=func.now())
+    first_seen = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    last_seen = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class PortModel(Base):
+    __tablename__ = "device_ports"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    device_id = Column(Integer, nullable=False, index=True)
+
+    port = Column(Integer, nullable=False)
+    protocol = Column(String, default="tcp")
+    service = Column(String, default="unknown")
+    state = Column(String, default="open")
+
+    first_seen = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
     last_seen = Column(
         DateTime(timezone=True),
         server_default=func.now(),
