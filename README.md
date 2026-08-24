@@ -293,14 +293,11 @@ A key architectural decision was separating deterministic security assessment fr
 
 ### Security Dashboard
 
-_Add screenshot here._
+![HomeSec Security Dashboard](screenshots/dashboard.png)
 
 ### AI Security Analysis
 
-_Add screenshot here._
-
----
-
+![HomeSec AI Security Analysis](screenshots/ai-analysis.png)
 ## 🚧 Project Status
 
 HomeSec is currently a working prototype.
