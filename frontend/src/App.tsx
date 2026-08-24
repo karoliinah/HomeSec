@@ -25,14 +25,52 @@ type Device = {
   open_ports: Port[];
 };
 
+type Analysis = {
+  error?: boolean;
+  message?: string;
+  device_id?: number;
+  analysis?: string;
+  model?: string;
+  created_at?: string;
+};
+
+function parseAnalysis(text: string) {
+  const summary =
+    text.match(/SUMMARY:\s*([\s\S]*?)(?=\n\s*RISKS:|$)/)?.[1]?.trim() ??
+    "";
+
+  const risks =
+    text.match(
+      /RISKS:\s*([\s\S]*?)(?=\n\s*RECOMMENDATIONS:|$)/
+    )?.[1]?.trim() ?? "";
+
+  const recommendations =
+    text.match(/RECOMMENDATIONS:\s*([\s\S]*)/)?.[1]?.trim() ?? "";
+
+  const cleanItems = (value: string) =>
+    value
+      .split("\n")
+      .map((line) =>
+        line
+          .replace(/^\s*[\*\-]\s*/, "")
+          .replace(/\*\*/g, "")
+          .trim()
+      )
+      .filter(Boolean);
+
+  return {
+    summary,
+    risks: cleanItems(risks),
+    recommendations: cleanItems(recommendations),
+  };
+}
+
 function App() {
   const { data, isLoading, error, refetch } = useDevices();
 
   const [scanning, setScanning] = useState(false);
-  const [analyzingDevice, setAnalyzingDevice] = useState<number | null>(
-    null
-  );
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [analyzingDevice, setAnalyzingDevice] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
 
   async function handleScan() {
     setScanning(true);
@@ -72,35 +110,26 @@ function App() {
 
   if (isLoading) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: "#0f172a",
-          color: "white",
-          padding: "40px",
-          fontFamily: "Arial",
-        }}
-      >
-        <h2>Loading devices...</h2>
+      <main className="app loading-screen">
+        <div className="loading-content">
+          <div className="loading-logo">🛡</div>
+          <h2>Loading HomeSec...</h2>
+          <p>Connecting to your security dashboard</p>
+        </div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: "#0f172a",
-          color: "white",
-          padding: "40px",
-          fontFamily: "Arial",
-        }}
-      >
-        <h2>Unable to connect to backend.</h2>
-        <p style={{ color: "#94a3b8" }}>
-          Make sure the HomeSec API is running.
-        </p>
+      <main className="app loading-screen">
+        <div className="error-content">
+          <div className="loading-logo">⚠</div>
+          <h2>Unable to connect to HomeSec</h2>
+          <p>
+            Make sure the backend API is running and try again.
+          </p>
+        </div>
       </main>
     );
   }
@@ -119,344 +148,345 @@ function App() {
     (device) => device.risk_level === "Low"
   ).length;
 
+  const selectedDevice =
+    analysis && !analysis.error
+      ? devices.find((device) => device.id === analysis.device_id)
+      : null;
+
+  const parsedAnalysis =
+    analysis?.analysis ? parseAnalysis(analysis.analysis) : null;
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0f172a",
-        color: "white",
-        padding: "40px",
-        fontFamily: "Arial",
-      }}
-    >
-      <h1>🛡 HomeSec</h1>
+    <main className="app">
+      <div className="dashboard">
+        <header className="header">
+          <div className="brand">
+            <div className="brand-icon">🛡</div>
 
-      <p style={{ color: "#94a3b8" }}>
-        Home Network Security Dashboard
-      </p>
+            <div>
+              <h1>HomeSec</h1>
+              <p>Home Network Security Dashboard</p>
+            </div>
+          </div>
 
-      <button
-        onClick={handleScan}
-        disabled={scanning}
-        style={{
-          marginTop: "20px",
-          marginBottom: "30px",
-          padding: "10px 20px",
-          background: scanning ? "#475569" : "#2563eb",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          cursor: scanning ? "not-allowed" : "pointer",
-        }}
-      >
-        {scanning ? "Scanning..." : "Scan Network"}
-      </button>
-
-      {/* Dashboard statistics */}
-
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "15px",
-          marginBottom: "30px",
-        }}
-      >
-        <div
-          style={{
-            background: "#1e293b",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h3>Total Devices</h3>
-          <p style={{ fontSize: "28px", margin: 0 }}>
-            {devices.length}
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "#1e293b",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h3>High Risk</h3>
-          <p style={{ fontSize: "28px", margin: 0 }}>
-            {highRisk}
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "#1e293b",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h3>Medium Risk</h3>
-          <p style={{ fontSize: "28px", margin: 0 }}>
-            {mediumRisk}
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "#1e293b",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h3>Low Risk</h3>
-          <p style={{ fontSize: "28px", margin: 0 }}>
-            {lowRisk}
-          </p>
-        </div>
-      </section>
-
-      <h2>Connected Devices</h2>
-
-      {devices.length === 0 ? (
-        <p style={{ color: "#94a3b8" }}>
-          No devices found. Run a network scan.
-        </p>
-      ) : (
-        devices.map((device) => (
-          <div
-            key={device.id}
-            style={{
-              background: "#1e293b",
-              padding: "20px",
-              borderRadius: "10px",
-              marginTop: "15px",
-            }}
+          <button
+            className="scan-button"
+            onClick={handleScan}
+            disabled={scanning}
           >
-            {/* Device information */}
+            <span>{scanning ? "◌" : "↻"}</span>
+            {scanning ? "Scanning network..." : "Scan Network"}
+          </button>
+        </header>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div>
-                <h3 style={{ marginTop: 0 }}>
-                  {device.hostname}
-                </h3>
+        <section className="hero-section">
+          <div>
+            <p className="eyebrow">SECURITY OVERVIEW</p>
 
-                <p>IP: {device.ip}</p>
+            <h2>Your network at a glance</h2>
 
-                <p>MAC: {device.mac}</p>
-
-                <p>Vendor: {device.vendor}</p>
-              </div>
-
-              <div
-                style={{
-                  textAlign: "right",
-                }}
-              >
-                <p>
-                  Risk:{" "}
-                  <strong>{device.risk_level}</strong>
-                </p>
-
-                <p>
-                  Risk Score:{" "}
-                  <strong>{device.risk_score}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Open ports */}
-
-            <div
-              style={{
-                marginTop: "20px",
-                paddingTop: "15px",
-                borderTop: "1px solid #334155",
-              }}
-            >
-              <h4>🔌 Open Ports</h4>
-
-              {device.open_ports &&
-              device.open_ports.length > 0 ? (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  {device.open_ports.map((port) => (
-                    <div
-                      key={port.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        background: "#0f172a",
-                        padding: "10px 14px",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      <div>
-                        <strong>
-                          {port.port}
-                        </strong>
-
-                        <span
-                          style={{
-                            marginLeft: "10px",
-                            color: "#94a3b8",
-                          }}
-                        >
-                          {port.protocol.toUpperCase()}
-                        </span>
-                      </div>
-
-                      <span>
-                        {port.service}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p
-                  style={{
-                    color: "#94a3b8",
-                  }}
-                >
-                  No open ports detected.
-                </p>
-              )}
-            </div>
-
-            {/* AI analysis button */}
-
-            <button
-              onClick={() =>
-                handleAnalyze(device.id)
-              }
-              disabled={
-                analyzingDevice === device.id
-              }
-              style={{
-                marginTop: "20px",
-                padding: "10px 18px",
-                background:
-                  analyzingDevice === device.id
-                    ? "#475569"
-                    : "#7c3aed",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor:
-                  analyzingDevice === device.id
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            >
-              {analyzingDevice === device.id
-                ? "Analyzing..."
-                : "🤖 Analyze with AI"}
-            </button>
-
-            <p
-              style={{
-                marginTop: "15px",
-                color: "#94a3b8",
-              }}
-            >
-              Trusted:{" "}
-              {device.trusted ? "Yes" : "No"}
+            <p className="hero-description">
+              Monitor connected devices, identify exposed services, and
+              understand potential security risks across your home network.
             </p>
           </div>
-        ))
-      )}
 
-      {/* AI Analysis Modal */}
+          <div className="network-status">
+            <span className="status-dot" />
+            <span>Network monitoring active</span>
+          </div>
+        </section>
+
+        <section className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon devices-icon">◈</div>
+
+            <div>
+              <p>Total Devices</p>
+              <strong>{devices.length}</strong>
+            </div>
+          </div>
+
+          <div className="stat-card high-risk-card">
+            <div className="stat-icon high-icon">!</div>
+
+            <div>
+              <p>High Risk</p>
+              <strong>{highRisk}</strong>
+            </div>
+          </div>
+
+          <div className="stat-card medium-risk-card">
+            <div className="stat-icon medium-icon">!</div>
+
+            <div>
+              <p>Medium Risk</p>
+              <strong>{mediumRisk}</strong>
+            </div>
+          </div>
+
+          <div className="stat-card low-risk-card">
+            <div className="stat-icon low-icon">✓</div>
+
+            <div>
+              <p>Low Risk</p>
+              <strong>{lowRisk}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="devices-section">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">NETWORK INVENTORY</p>
+              <h2>Connected Devices</h2>
+            </div>
+
+            <span className="device-count">
+              {devices.length} device{devices.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {devices.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">◌</div>
+              <h3>No devices found</h3>
+              <p>Run a network scan to discover devices.</p>
+            </div>
+          ) : (
+            <div className="device-grid">
+              {devices.map((device) => (
+                <article className="device-card" key={device.id}>
+                  <div className="device-card-header">
+                    <div className="device-title">
+                      <div className="device-icon">
+                        {device.hostname.toLowerCase().includes("router")
+                          ? "⌁"
+                          : "◈"}
+                      </div>
+
+                      <div>
+                        <h3>{device.hostname}</h3>
+                        <span>{device.ip}</span>
+                      </div>
+                    </div>
+
+                    <div className="risk-summary">
+                      <span
+                        className={`risk-badge risk-${device.risk_level.toLowerCase()}`}
+                      >
+                        {device.risk_level}
+                      </span>
+
+                      <span className="risk-score">
+                        Score {device.risk_score}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="device-details">
+                    <div>
+                      <span>MAC ADDRESS</span>
+                      <p>{device.mac || "Unknown"}</p>
+                    </div>
+
+                    <div>
+                      <span>VENDOR</span>
+                      <p>{device.vendor || "Unknown"}</p>
+                    </div>
+
+                    <div>
+                      <span>TRUST STATUS</span>
+                      <p>
+                        <span
+                          className={
+                            device.trusted
+                              ? "trusted-status"
+                              : "untrusted-status"
+                          }
+                        >
+                          {device.trusted ? "Trusted" : "Not trusted"}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ports-section">
+                    <div className="ports-header">
+                      <h4>Open Services</h4>
+
+                      <span>
+                        {device.open_ports?.length ?? 0} detected
+                      </span>
+                    </div>
+
+                    {device.open_ports?.length > 0 ? (
+                      <div className="ports-list">
+                        {device.open_ports.map((port) => (
+                          <div className="port-item" key={port.id}>
+                            <div className="port-number">
+                              {port.port}
+                            </div>
+
+                            <div className="port-info">
+                              <strong>{port.service}</strong>
+
+                              <span>
+                                {port.protocol.toUpperCase()} ·{" "}
+                                {port.state}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="no-ports">
+                        No open ports detected.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="device-actions">
+                    <button
+                      className="ai-button"
+                      onClick={() => handleAnalyze(device.id)}
+                      disabled={analyzingDevice === device.id}
+                    >
+                      <span>✦</span>
+
+                      {analyzingDevice === device.id
+                        ? "Analyzing security..."
+                        : "Analyze with AI"}
+                    </button>
+
+                    <span className="last-seen">
+                      Last seen:{" "}
+                      {new Date(device.last_seen).toLocaleString()}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       {analysis && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: "#1e293b",
-              borderRadius: "12px",
-              padding: "30px",
-              maxWidth: "800px",
-              width: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h2>🤖 AI Security Analysis</h2>
+        <div className="modal-overlay">
+          <div className="analysis-modal">
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">AI SECURITY INSIGHT</p>
+
+                <h2>Security Analysis</h2>
+
+                {selectedDevice && (
+                  <p className="analysis-device">
+                    {selectedDevice.hostname} · {selectedDevice.ip}
+                  </p>
+                )}
+              </div>
 
               <button
+                className="close-button"
                 onClick={() => setAnalysis(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#94a3b8",
-                  fontSize: "24px",
-                  cursor: "pointer",
-                }}
+                aria-label="Close analysis"
               >
                 ×
               </button>
             </div>
 
             {analysis.error ? (
-              <p
-                style={{
-                  color: "#f87171",
-                }}
-              >
-                {analysis.message}
-              </p>
-            ) : (
-              <>
-                <p
-                  style={{
-                    color: "#94a3b8",
-                  }}
-                >
-                  Device ID: {analysis.device_id}
-                </p>
+              <div className="analysis-error">
+                <span>⚠</span>
 
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "Arial",
-                    lineHeight: 1.6,
-                    background: "#0f172a",
-                    padding: "20px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  {analysis.analysis}
-                </pre>
-              </>
+                <div>
+                  <h3>Analysis unavailable</h3>
+                  <p>{analysis.message}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="analysis-content">
+                <div className="analysis-meta">
+                  <span>✦ AI-generated security assessment</span>
+
+                  {analysis.model && (
+                    <span className="model-badge">
+                      {analysis.model}
+                    </span>
+                  )}
+                </div>
+
+                {parsedAnalysis && (
+                  <div className="structured-analysis">
+                    <section className="analysis-section summary-section">
+                      <div className="analysis-section-title">
+                        <span className="analysis-section-icon">
+                          ◉
+                        </span>
+
+                        <h3>Summary</h3>
+                      </div>
+
+                      <p className="summary-text">
+                        {parsedAnalysis.summary}
+                      </p>
+                    </section>
+
+                    <section className="analysis-section">
+                      <div className="analysis-section-title">
+                        <span className="analysis-section-icon risk-icon">
+                          !
+                        </span>
+
+                        <h3>Security Risks</h3>
+                      </div>
+
+                      <div className="analysis-list">
+                        {parsedAnalysis.risks.map((risk, index) => (
+                          <div
+                            className="analysis-list-item"
+                            key={index}
+                          >
+                            <span className="risk-indicator">
+                              !
+                            </span>
+
+                            <p>{risk}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="analysis-section recommendations-section">
+                      <div className="analysis-section-title">
+                        <span className="analysis-section-icon recommendation-icon">
+                          ✓
+                        </span>
+
+                        <h3>Recommendations</h3>
+                      </div>
+
+                      <div className="analysis-list">
+                        {parsedAnalysis.recommendations.map(
+                          (recommendation, index) => (
+                            <div
+                              className="analysis-list-item recommendation-item"
+                              key={index}
+                            >
+                              <span className="recommendation-number">
+                                {index + 1}
+                              </span>
+
+                              <p>{recommendation}</p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

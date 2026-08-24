@@ -13,7 +13,7 @@ class AIService:
         self.repository = AIRepository()
         self.device_repository = DeviceRepository()
 
-        self.model = "gemini-3.6-flash"
+        self.model = "gemini-3.5-flash"
 
         api_key = os.getenv("GEMINI_API_KEY")
 
